@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "name": "真实题：羊城杯2024：HTTP数据清洗（提交垃圾数据）",
+  "description": "8000条请求提取与规则清洗，输出垃圾数据；尚无官方正确率。",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "pcap.http",
+      "config": {
+        "path": "../work/contest-round2/input/ycb24_traffic/data.pcapng"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "json",
+      "plugin": "json.extract",
+      "config": {
+        "field": "正文",
+        "mapping": {
+          "username": "/username",
+          "name": "/name",
+          "sex": "/sex",
+          "birth": "/birth",
+          "idcard": "/idcard",
+          "phone": "/phone"
+        }
+      },
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "columns",
+      "plugin": "columns.select",
+      "config": {
+        "fields": [
+          "username",
+          "name",
+          "sex",
+          "birth",
+          "idcard",
+          "phone",
+          "帧号"
+        ]
+      },
+      "inputs": {
+        "data": "json:valid"
+      }
+    },
+    {
+      "id": "rules",
+      "plugin": "validate.rules",
+      "config": {
+        "rules": [
+          {
+            "field": "username",
+            "check": "regex",
+            "pattern": "[A-Za-z0-9]+"
+          },
+          {
+            "field": "name",
+            "check": "regex",
+            "pattern": "[\\u4e00-\\u9fff]+"
+          },
+          {
+            "field": "sex",
+            "check": "enum",
+            "values": [
+              "男",
+              "女"
+            ]
+          },
+          {
+            "field": "birth",
+            "check": "regex",
+            "pattern": "[0-9]{8}"
+          },
+          {
+            "field": "idcard",
+            "check": "regex",
+            "pattern": "[0-9]{17}[0-9Xx]"
+          },
+          {
+            "field": "phone",
+            "check": "regex",
+            "pattern": "(?:734|735|736|737|738|739|747|748|750|751|752|757|758|759|772|778|782|783|784|787|788|795|798|730|731|732|740|745|746|755|756|766|767|771|775|776|785|786|796|733|749|753|773|774|777|780|781|789|790|791|793|799)[0-9]{8}"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "columns:data"
+      }
+    },
+    {
+      "id": "identity",
+      "plugin": "validate.identity",
+      "config": {
+        "field": "idcard",
+        "gender_field": "sex",
+        "check_date": false,
+        "check_sequence": false,
+        "check_region_format": false
+      },
+      "inputs": {
+        "data": "rules:valid"
+      }
+    },
+    {
+      "id": "id_birth",
+      "plugin": "text.extract",
+      "config": {
+        "field": "idcard",
+        "pattern": "^[0-9]{6}([0-9]{8})",
+        "group": 1,
+        "output": "身份证生日"
+      },
+      "inputs": {
+        "data": "identity:valid"
+      }
+    },
+    {
+      "id": "birth",
+      "plugin": "validate.rules",
+      "config": {
+        "rules": [
+          {
+            "field": "birth",
+            "check": "equals_field",
+            "other": "身份证生日"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "id_birth:data"
+      }
+    },
+    {
+      "id": "bad_birth",
+      "plugin": "columns.select",
+      "config": {
+        "fields": [
+          "username",
+          "name",
+          "sex",
+          "birth",
+          "idcard",
+          "phone",
+          "帧号"
+        ]
+      },
+      "inputs": {
+        "data": "birth:invalid"
+      }
+    },
+    {
+      "id": "merge1",
+      "plugin": "rows.merge",
+      "config": {},
+      "inputs": {
+        "left": "rules:invalid",
+        "right": "identity:invalid"
+      }
+    },
+    {
+      "id": "merge2",
+      "plugin": "rows.merge",
+      "config": {},
+      "inputs": {
+        "left": "merge1:data",
+        "right": "bad_birth:data"
+      }
+    },
+    {
+      "id": "restore_order",
+      "plugin": "rows.sort",
+      "config": {
+        "rules": [
+          {
+            "field": "帧号",
+            "type": "number",
+            "direction": "asc"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "merge2:data"
+      }
+    },
+    {
+      "id": "answer",
+      "plugin": "columns.select",
+      "config": {
+        "fields": [
+          "username",
+          "name",
+          "sex",
+          "birth",
+          "idcard",
+          "phone"
+        ]
+      },
+      "inputs": {
+        "data": "restore_order:data"
+      }
+    },
+    {
+      "id": "save",
+      "plugin": "csv.write",
+      "config": {
+        "path": "../work/contest-round2/results/ycb24_traffic/submission.csv",
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "answer:data"
+      }
+    },
+    {
+      "id": "json_errors",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/contest-round2/results/ycb24_traffic/json_errors.jsonl",
+        "overwrite": true,
+        "format": "jsonl",
+        "diagnostics": true
+      },
+      "inputs": {
+        "data": "json:invalid"
+      }
+    },
+    {
+      "id": "decode_errors",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/contest-round2/results/ycb24_traffic/decode_errors.jsonl",
+        "overwrite": true,
+        "format": "jsonl",
+        "diagnostics": true
+      },
+      "inputs": {
+        "data": "read:invalid"
+      }
+    }
+  ]
+}

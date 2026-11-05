@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "name": "演练：订单异常调查",
+  "description": "参考浙江2025决赛规则：Luhn、时间窗口跨用户计数、分组金额异常；非完整官方判分",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "csv.read",
+      "config": {
+        "path": "data/ctf_orders.csv"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "card",
+      "plugin": "validate.luhn",
+      "config": {
+        "field": "卡号"
+      },
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "window",
+      "plugin": "rows.window_count",
+      "config": {
+        "time_field": "时间",
+        "group_by": [
+          "卡号"
+        ],
+        "distinct_field": "用户",
+        "output": "一小时用户数"
+      },
+      "inputs": {
+        "data": "card:valid"
+      }
+    },
+    {
+      "id": "classify",
+      "plugin": "rows.classify",
+      "config": {
+        "rules": [
+          {
+            "label": "需调查",
+            "conditions": [
+              {
+                "field": "一小时用户数",
+                "op": "gt",
+                "value": "1"
+              }
+            ],
+            "match": "all"
+          }
+        ],
+        "default": "未触发窗口规则",
+        "output": "窗口提示"
+      },
+      "inputs": {
+        "data": "window:valid"
+      }
+    },
+    {
+      "id": "amount",
+      "plugin": "stats.outliers",
+      "config": {
+        "field": "金额",
+        "group_by": [
+          "品类"
+        ],
+        "threshold": "1.5"
+      },
+      "inputs": {
+        "data": "classify:data"
+      }
+    },
+    {
+      "id": "write",
+      "plugin": "csv.write",
+      "config": {
+        "path": "../work/practice/orders_answer.csv",
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "classify:data"
+      }
+    },
+    {
+      "id": "outlier",
+      "plugin": "csv.write",
+      "config": {
+        "path": "../work/practice/orders_amount.csv",
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "amount:outliers"
+      }
+    },
+    {
+      "id": "reject",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/practice/orders_reject.jsonl",
+        "overwrite": true,
+        "format": "jsonl"
+      },
+      "inputs": {
+        "data": "card:invalid"
+      }
+    }
+  ]
+}

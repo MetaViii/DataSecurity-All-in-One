@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "本地插件与修改追踪",
+  "plugin_dirs": ["../plugins"],
+  "nodes": [
+    {"id": "read", "plugin": "csv.read", "config": {"path": "data/people.csv"}},
+    {
+      "id": "prefix",
+      "plugin": "example.add_prefix",
+      "inputs": {"data": "read:data"},
+      "config": {"field": "备注", "prefix": "[已处理] "}
+    },
+    {
+      "id": "save",
+      "plugin": "json.write",
+      "inputs": {"data": "prefix:data"},
+      "config": {"path": "../work/demo/prefixed.json", "diagnostics": true, "overwrite": true}
+    }
+  ]
+}

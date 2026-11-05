@@ -1,0 +1,201 @@
+{
+  "version": 1,
+  "name": "真实题：规则与RSA验签",
+  "description": "广工2025网安卫士公开原附件；请先运行 python scripts/real_ctf.py --fetch，来源与结果见real-ctf.md",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "csv.read",
+      "config": {
+        "path": "../work/real-ctf/input/cleaning/polluted.csv"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "rules",
+      "plugin": "validate.rules",
+      "config": {
+        "rules": [
+          {
+            "field": "姓名",
+            "check": "regex",
+            "pattern": "[^A-Za-z0-9]*"
+          },
+          {
+            "field": "性别",
+            "check": "enum",
+            "values": [
+              "男",
+              "女"
+            ]
+          },
+          {
+            "field": "用户名",
+            "check": "regex",
+            "pattern": "[A-Za-z][A-Za-z0-9]*"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "identity",
+      "plugin": "validate.identity",
+      "config": {
+        "field": "身份证号",
+        "gender_field": "性别",
+        "check_sequence": false,
+        "check_date": false,
+        "check_region_format": false,
+        "allow_lower_x": false
+      },
+      "inputs": {
+        "data": "rules:valid"
+      }
+    },
+    {
+      "id": "message",
+      "plugin": "text.template",
+      "config": {
+        "template": "{用户名}_{密码}_{身份证号}",
+        "output": "待验消息"
+      },
+      "inputs": {
+        "data": "identity:valid"
+      }
+    },
+    {
+      "id": "signature",
+      "plugin": "validate.signature",
+      "config": {
+        "message_field": "待验消息",
+        "signature_field": "签名",
+        "key_path": "../work/real-ctf/input/cleaning/cert/{序号}.pem"
+      },
+      "inputs": {
+        "data": "message:data"
+      }
+    },
+    {
+      "id": "bad_rules",
+      "plugin": "columns.select",
+      "config": {
+        "fields": [
+          "序号"
+        ]
+      },
+      "inputs": {
+        "data": "rules:invalid"
+      }
+    },
+    {
+      "id": "bad_identity",
+      "plugin": "columns.select",
+      "config": {
+        "fields": [
+          "序号"
+        ]
+      },
+      "inputs": {
+        "data": "identity:invalid"
+      }
+    },
+    {
+      "id": "bad_signature",
+      "plugin": "columns.select",
+      "config": {
+        "fields": [
+          "序号"
+        ]
+      },
+      "inputs": {
+        "data": "signature:invalid"
+      }
+    },
+    {
+      "id": "merge1",
+      "plugin": "rows.merge",
+      "config": {},
+      "inputs": {
+        "left": "bad_rules:data",
+        "right": "bad_identity:data"
+      }
+    },
+    {
+      "id": "merge2",
+      "plugin": "rows.merge",
+      "config": {},
+      "inputs": {
+        "left": "merge1:data",
+        "right": "bad_signature:data"
+      }
+    },
+    {
+      "id": "sort",
+      "plugin": "rows.sort",
+      "config": {
+        "rules": [
+          {
+            "field": "序号",
+            "type": "number",
+            "direction": "asc"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "merge2:data"
+      }
+    },
+    {
+      "id": "collect",
+      "plugin": "rows.collect",
+      "config": {
+        "field": "序号",
+        "separator": "_"
+      },
+      "inputs": {
+        "data": "sort:data"
+      }
+    },
+    {
+      "id": "digest",
+      "plugin": "codec.fields",
+      "config": {
+        "fields": [
+          "拼接结果"
+        ],
+        "operation": "md5"
+      },
+      "inputs": {
+        "data": "collect:data"
+      }
+    },
+    {
+      "id": "flag",
+      "plugin": "text.template",
+      "config": {
+        "template": "flag{{{拼接结果}}}",
+        "output": "flag"
+      },
+      "inputs": {
+        "data": "digest:valid"
+      }
+    },
+    {
+      "id": "save_flag",
+      "plugin": "text.write",
+      "config": {
+        "path": "../work/real-ctf/results/cleaning/flag.txt",
+        "fields": [
+          "flag"
+        ],
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "flag:data"
+      }
+    }
+  ]
+}

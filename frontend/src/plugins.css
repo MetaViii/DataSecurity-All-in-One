@@ -1,0 +1,322 @@
+.plugin-manager {
+  padding: 20px;
+  overflow: auto;
+  min-height: 350px;
+}
+.plugin-entry svg {
+  display: block;
+}
+.plugin-entry {
+  flex-shrink: 0;
+  min-width: 30px;
+}
+.plugin-manager-top,
+.manager-section-heading,
+.installed-plugin-main,
+.installed-plugin-actions,
+.plugin-editor-heading,
+.plugin-install-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.plugin-manager-top,
+.manager-section-heading,
+.plugin-editor-heading {
+  justify-content: space-between;
+}
+.segmented-control,
+.library-scope {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.segmented-control button,
+.library-scope button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+.segmented-control button.active,
+.library-scope button.active {
+  background: #edf2ff;
+  color: #284eb6;
+  font-weight: 600;
+}
+.library-scope {
+  padding: 4px 12px 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.library-scope button {
+  padding: 5px 7px;
+}
+.library-scope button:last-child {
+  margin-left: auto;
+}
+.text-button {
+  border: 0;
+  background: transparent;
+  color: #315bb8;
+  padding: 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.text-button:disabled {
+  color: #94a3b8;
+  cursor: default;
+}
+.manager-section-heading {
+  margin: 20px 0 12px;
+}
+.manager-section-heading p,
+.plugin-choice span,
+.manager-notice,
+.plugin-trust p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #64748b;
+  margin: 5px 0;
+}
+.installed-plugin {
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.installed-plugin-main > div {
+  min-width: 0;
+  flex: 1;
+}
+.installed-plugin-main strong,
+.installed-plugin-main div span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.installed-plugin-main div span {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.plugin-file-icon {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 10px;
+  border-radius: 8px;
+}
+.plugin-state {
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+.plugin-state.enabled {
+  background: #eaf8f0;
+  color: #24734c;
+}
+.plugin-state.error,
+.manager-feedback.error {
+  background: #fff1f0;
+  color: #b53b35;
+}
+.installed-plugin-actions {
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.plugin-source-preview,
+.plugin-source-editor,
+.plugin-file-error,
+.manager-errors pre {
+  white-space: pre;
+  tab-size: 4;
+  font-family: Consolas, 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 12px;
+  max-height: 320px;
+}
+.plugin-source-editor {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 300px;
+  resize: vertical;
+  background: #fbfcfe;
+  color: #1e293b;
+}
+.plugin-add-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.plugin-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  padding: 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+}
+.plugin-choice:hover {
+  border-color: #8aa6e9;
+  background: #fafbff;
+}
+.plugin-choice svg {
+  color: #526caa;
+}
+.plugin-editor-heading {
+  margin: 14px 0 7px;
+  font-size: 13px;
+}
+.plugin-editor-heading span {
+  font-size: 12px;
+  color: #64748b;
+}
+#plugin-filename {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+}
+.plugin-trust,
+.enable-plugin-confirm {
+  margin: 14px 0;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+}
+.trust-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-top: 9px;
+}
+.trust-checkbox input {
+  accent-color: #3b65be;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  flex: 0 0 16px;
+  padding: 0;
+}
+.plugin-install-footer {
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.plugin-install-footer > span {
+  flex: 1;
+}
+.manager-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin: 14px 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.manager-feedback.success {
+  background: #eaf8f0;
+  color: #24734c;
+}
+.manager-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 35px;
+  color: #64748b;
+  text-align: center;
+}
+.plugin-draft-hint {
+  font-size: 12px;
+  color: #64748b;
+}
+.enable-plugin-confirm > div {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.template-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.markdown a {
+  color: #315bb8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.markdown ul,
+.markdown ol {
+  padding-left: 24px;
+  line-height: 1.9;
+}
+.markdown p code,
+.markdown li code,
+.markdown td code {
+  background: #f1f5f9;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+.docs-table {
+  overflow: auto;
+  margin: 16px 0;
+}
+.docs-table table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 13px;
+}
+.docs-table th,
+.docs-table td {
+  border: 1px solid #e2e8f0;
+  padding: 9px 11px;
+  text-align: left;
+  vertical-align: top;
+}
+.docs-table th {
+  background: #f8fafc;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .plugin-add-choices {
+    grid-template-columns: 1fr;
+  }
+  .plugin-manager {
+    padding: 12px;
+  }
+  .plugin-editor-heading span {
+    display: none;
+  }
+  .plugin-entry span {
+    display: none;
+  }
+  .manager-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

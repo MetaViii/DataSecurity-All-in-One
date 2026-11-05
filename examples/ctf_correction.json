@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "演练：字典纠错、人工复核与评分",
+  "description": "自造6行纠错样本，含独立标准答案；先看review与候选，再应用人工清单；输出XLSX并按唯一键逐格评分。不是原比赛附件。",
+  "nodes": [
+    {"id": "dirty", "plugin": "csv.read", "config": {"path": "data/correction_dirty.csv"}},
+    {"id": "dictionary", "plugin": "csv.read", "config": {"path": "data/correction_dictionary.csv"}},
+    {"id": "expected", "plugin": "csv.read", "config": {"path": "data/correction_answer.csv"}},
+    {"id": "patches", "plugin": "csv.read", "config": {"path": "data/correction_patches.csv"}},
+    {"id": "before", "plugin": "tables.score", "config": {"mode": "keyed", "keys": ["编号"], "fields": ["部门"], "metric": "cell", "threshold": "0.95"}, "inputs": {"answer": "expected:data", "candidate": "dirty:data"}},
+    {"id": "fuzzy", "plugin": "tables.fuzzy_lookup", "config": {"field": "部门", "reference_field": "标准部门", "apply": true}, "inputs": {"data": "dirty:data", "reference": "dictionary:data"}},
+    {"id": "patch", "plugin": "table.patch", "config": {"keys": ["编号"]}, "inputs": {"data": "fuzzy:data", "patches": "patches:data"}},
+    {"id": "score", "plugin": "tables.score", "config": {"mode": "keyed", "keys": ["编号"], "fields": ["部门"], "metric": "cell", "threshold": "0.95"}, "inputs": {"answer": "expected:data", "candidate": "patch:data"}},
+    {"id": "save", "plugin": "xlsx.write", "config": {"path": "../work/correction/corrected.xlsx", "overwrite": true}, "inputs": {"data": "patch:data"}}
+  ]
+}

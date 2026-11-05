@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "name": "演练：证件清洗与一致性校验",
+  "description": "参考羊城2025 dataIdSort的格式识别；加入生日与性别对照练习，使用标准示例号码",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "csv.read",
+      "config": {
+        "path": "data/ctf_identity.csv"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "clean",
+      "plugin": "text.replace",
+      "config": {
+        "fields": [
+          "证件"
+        ],
+        "search": "[\\s-]",
+        "replacement": "",
+        "regex": true
+      },
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "check",
+      "plugin": "validate.identity",
+      "config": {
+        "field": "证件",
+        "gender_field": "性别",
+        "birth_field": "生日"
+      },
+      "inputs": {
+        "data": "clean:data"
+      }
+    },
+    {
+      "id": "write",
+      "plugin": "csv.write",
+      "config": {
+        "path": "../work/practice/identity_answer.csv",
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "check:valid"
+      }
+    },
+    {
+      "id": "reject",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/practice/identity_reject.jsonl",
+        "overwrite": true,
+        "diagnostics": true,
+        "format": "jsonl"
+      },
+      "inputs": {
+        "data": "check:invalid"
+      }
+    }
+  ]
+}

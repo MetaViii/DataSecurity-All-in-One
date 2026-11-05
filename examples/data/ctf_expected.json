@@ -1,0 +1,40 @@
+{
+  "xor": [
+    {
+      "username": "demo_a",
+      "city": "杭州"
+    },
+    {
+      "username": "demo_b",
+      "city": "宁波"
+    }
+  ],
+  "identity_valid": [
+    "001",
+    "005"
+  ],
+  "identity_invalid": [
+    "002",
+    "003",
+    "004"
+  ],
+  "orders_valid": [
+    "A",
+    "B",
+    "C",
+    "D"
+  ],
+  "orders_counts": [
+    "1",
+    "2",
+    "1",
+    "2"
+  ],
+  "orders_amount": [
+    "D"
+  ],
+  "orders_invalid": [
+    "E"
+  ],
+  "lookup_text": "001\t运维\t138****0001\n002\t开发\t139****0002\n"
+}

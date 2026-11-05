@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "name": "演练：参考表纠错与提交",
+  "description": "虚构CSV纠错练习：明确字典关联、未命中审查、手机号脱敏、纯文本提交和质量概览",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "csv.read",
+      "config": {
+        "path": "data/ctf_dirty.csv"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "reference",
+      "plugin": "csv.read",
+      "config": {
+        "path": "data/ctf_reference.csv"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "lookup",
+      "plugin": "tables.lookup",
+      "config": {
+        "keys": [
+          "编号"
+        ],
+        "mapping": {
+          "部门": "标准部门"
+        },
+        "mode": "replace"
+      },
+      "inputs": {
+        "data": "read:data",
+        "reference": "reference:data"
+      }
+    },
+    {
+      "id": "mask",
+      "plugin": "text.mask",
+      "config": {
+        "fields": [
+          "电话"
+        ]
+      },
+      "inputs": {
+        "data": "lookup:matched"
+      }
+    },
+    {
+      "id": "profile",
+      "plugin": "profile.summary",
+      "config": {},
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "write",
+      "plugin": "text.write",
+      "config": {
+        "path": "../work/practice/lookup_answer.txt",
+        "fields": [
+          "编号",
+          "部门",
+          "电话"
+        ],
+        "separator": "\t",
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "mask:data"
+      }
+    },
+    {
+      "id": "reject",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/practice/lookup_reject.jsonl",
+        "overwrite": true,
+        "format": "jsonl"
+      },
+      "inputs": {
+        "data": "lookup:unmatched"
+      }
+    }
+  ]
+}

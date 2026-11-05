@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "name": "真实题：浙江2024决赛：流量识别与格式还原",
+  "description": "明文HTTP正文识别与变形格式还原，保留拒绝项；尚无官方正确率。",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "pcap.http",
+      "config": {
+        "path": "../work/contest-round2/input/zj24_classify2/data.pcapng"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "find",
+      "plugin": "text.find_all",
+      "config": {
+        "field": "正文",
+        "rules": [
+          {
+            "label": "idcard",
+            "pattern": "(?<![0-9])(?:[0-9]{17}[0-9Xx]|[0-9]{6} [0-9]{8} [0-9]{3}[0-9Xx]|[0-9]{6}-[0-9]{8}-[0-9]{3}[0-9Xx])(?![0-9])"
+          },
+          {
+            "label": "phone",
+            "pattern": "(?<![0-9])(?:[0-9]{11}|[0-9]{3} [0-9]{4} [0-9]{4}|[0-9]{3}-[0-9]{4}-[0-9]{4})(?![0-9])"
+          },
+          {
+            "label": "ip",
+            "pattern": "(?<![0-9.])(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?![0-9.])"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "normalize",
+      "plugin": "text.replace",
+      "config": {
+        "fields": [
+          "value"
+        ],
+        "search": "[- ]",
+        "replacement": "",
+        "regex": true
+      },
+      "inputs": {
+        "data": "find:data"
+      }
+    },
+    {
+      "id": "ids",
+      "plugin": "rows.filter",
+      "config": {
+        "conditions": [
+          {
+            "field": "category",
+            "op": "eq",
+            "value": "idcard"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "normalize:data"
+      }
+    },
+    {
+      "id": "checksum",
+      "plugin": "validate.identity",
+      "config": {
+        "field": "value",
+        "check_date": false,
+        "check_sequence": false,
+        "check_region_format": false
+      },
+      "inputs": {
+        "data": "ids:matched"
+      }
+    },
+    {
+      "id": "phones",
+      "plugin": "rows.filter",
+      "config": {
+        "conditions": [
+          {
+            "field": "category",
+            "op": "eq",
+            "value": "phone"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "ids:unmatched"
+      }
+    },
+    {
+      "id": "phone_check",
+      "plugin": "validate.regex",
+      "config": {
+        "field": "value",
+        "pattern": "(?:734|735|736|737|738|739|747|748|750|751|752|757|758|759|772|778|782|783|784|787|788|795|798|730|731|732|740|745|746|755|756|766|767|771|775|776|785|786|796|733|749|753|773|774|777|780|781|789|790|791|793|799)[0-9]{8}"
+      },
+      "inputs": {
+        "data": "phones:matched"
+      }
+    },
+    {
+      "id": "ip_check",
+      "plugin": "validate.regex",
+      "config": {
+        "field": "value",
+        "pattern": "(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})){3}"
+      },
+      "inputs": {
+        "data": "phones:unmatched"
+      }
+    },
+    {
+      "id": "merge1",
+      "plugin": "rows.merge",
+      "config": {},
+      "inputs": {
+        "left": "checksum:valid",
+        "right": "phone_check:valid"
+      }
+    },
+    {
+      "id": "merge2",
+      "plugin": "rows.merge",
+      "config": {},
+      "inputs": {
+        "left": "merge1:data",
+        "right": "ip_check:valid"
+      }
+    },
+    {
+      "id": "restore_order",
+      "plugin": "rows.sort",
+      "config": {
+        "rules": [
+          {
+            "field": "记录位置",
+            "type": "number",
+            "direction": "asc"
+          },
+          {
+            "field": "起始字符",
+            "type": "number",
+            "direction": "asc"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "merge2:data"
+      }
+    },
+    {
+      "id": "answer",
+      "plugin": "columns.select",
+      "config": {
+        "fields": [
+          "category",
+          "value"
+        ]
+      },
+      "inputs": {
+        "data": "restore_order:data"
+      }
+    },
+    {
+      "id": "save",
+      "plugin": "csv.write",
+      "config": {
+        "path": "../work/contest-round2/results/zj24_classify2/submission.csv",
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "answer:data"
+      }
+    },
+    {
+      "id": "decode_errors",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/contest-round2/results/zj24_classify2/decode_errors.jsonl",
+        "overwrite": true,
+        "format": "jsonl",
+        "diagnostics": true
+      },
+      "inputs": {
+        "data": "read:invalid"
+      }
+    },
+    {
+      "id": "bad_id",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/contest-round2/results/zj24_classify2/invalid_identity.jsonl",
+        "overwrite": true,
+        "format": "jsonl",
+        "diagnostics": true
+      },
+      "inputs": {
+        "data": "checksum:invalid"
+      }
+    },
+    {
+      "id": "bad_phone",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/contest-round2/results/zj24_classify2/invalid_phone.jsonl",
+        "overwrite": true,
+        "format": "jsonl",
+        "diagnostics": true
+      },
+      "inputs": {
+        "data": "phone_check:invalid"
+      }
+    },
+    {
+      "id": "bad_ip",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/contest-round2/results/zj24_classify2/invalid_ip.jsonl",
+        "overwrite": true,
+        "format": "jsonl",
+        "diagnostics": true
+      },
+      "inputs": {
+        "data": "ip_check:invalid"
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "通用清洗与统计",
+  "description": "虚构订单：显式清理、错误分流、Decimal 计算、保留最后重复项、排序和统计",
+  "nodes": [
+    {"id": "read", "plugin": "csv.read", "config": {"path": "data/orders.csv"}},
+    {"id": "clean", "plugin": "text.clean", "config": {"fields": ["姓名", "部门", "金额"], "action": "strip"}, "inputs": {"data": "read:data"}},
+    {"id": "validate", "plugin": "validate.rules", "config": {"rules": [{"field": "编号", "check": "required"}, {"field": "金额", "check": "number"}]}, "inputs": {"data": "clean:data"}},
+    {"id": "calculate", "plugin": "columns.calculate", "config": {"expression": "round([金额] * 1.06, 2)", "output": "含税金额"}, "inputs": {"data": "validate:valid"}},
+    {"id": "deduplicate", "plugin": "rows.deduplicate", "config": {"fields": ["编号"], "keep": "last"}, "inputs": {"data": "calculate:data"}},
+    {"id": "sort", "plugin": "rows.sort", "config": {"rules": [{"field": "金额", "type": "number", "direction": "desc"}]}, "inputs": {"data": "deduplicate:unique"}},
+    {"id": "aggregate", "plugin": "group.aggregate", "config": {"group_by": ["部门"], "measures": [{"op": "count", "output": "数量"}, {"op": "sum", "field": "含税金额", "output": "含税合计"}]}, "inputs": {"data": "sort:data"}},
+    {"id": "save_clean", "plugin": "xlsx.write", "config": {"path": "../work/generic/clean.xlsx", "overwrite": true}, "inputs": {"data": "sort:data"}},
+    {"id": "save_invalid", "plugin": "json.write", "config": {"path": "../work/generic/invalid.jsonl", "format": "jsonl", "diagnostics": true, "overwrite": true}, "inputs": {"data": "validate:invalid"}},
+    {"id": "save_duplicates", "plugin": "csv.write", "config": {"path": "../work/generic/duplicates.csv", "diagnostics": true, "overwrite": true}, "inputs": {"data": "deduplicate:duplicates"}},
+    {"id": "save_summary", "plugin": "csv.write", "config": {"path": "../work/generic/summary.csv", "overwrite": true}, "inputs": {"data": "aggregate:data"}}
+  ]
+}

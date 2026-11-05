@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datasecurity-all-in-one"
+version = "0.5.0"
+description = "面向 CTF 数据处理的本地 Python 插件框架"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+web = ["fastapi>=0.116,<1", "uvicorn>=0.35,<1", "python-multipart>=0.0.20,<1", "openpyxl>=3.1,<4"]
+test = ["httpx>=0.28,<1"]
+crypto = ["cryptography>=42,<52"]
+
+[project.scripts]
+datasecurity = "datasecurity.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["datasecurity*"]
+
+[tool.black]
+line-length = 100

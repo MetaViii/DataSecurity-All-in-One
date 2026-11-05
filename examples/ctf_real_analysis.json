@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "name": "真实题：字段错位复原（10000行）",
+  "description": "广工2025网安卫士公开原附件；请先运行 python scripts/real_ctf.py --fetch，来源与结果见real-ctf.md",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "csv.read",
+      "config": {
+        "path": "../work/real-ctf/input/analysis/person_data.csv"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "realign",
+      "plugin": "columns.realign",
+      "config": {
+        "rules": {
+          "number": "[0-9]{1,5}",
+          "username": "[A-Za-z0-9]+",
+          "password": "[a-f0-9]{32}",
+          "name": "[\\u4e00-\\u9fff]+",
+          "gender": "男|女",
+          "birth": "[0-9]{8}",
+          "id": "[0-9]{17}[0-9Xx]",
+          "phone": "(?:734|735|736|737|738|739|747|748|750|751|752|757|758|759|772|778|782|783|784|787|788|795|798|730|731|732|740|745|746|755|756|766|767|771|775|776|785|786|796|733|749|753|773|774|777|780|781|789|790|791|793|799)[0-9]{8}"
+        }
+      },
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "sort",
+      "plugin": "rows.sort",
+      "config": {
+        "rules": [
+          {
+            "field": "number",
+            "type": "number",
+            "direction": "asc"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "realign:valid"
+      }
+    },
+    {
+      "id": "serialize",
+      "plugin": "table.serialize",
+      "config": {
+        "fields": [],
+        "line_ending": "crlf",
+        "trailing_blank_lines": 0
+      },
+      "inputs": {
+        "data": "sort:data"
+      }
+    },
+    {
+      "id": "answer",
+      "plugin": "text.write",
+      "config": {
+        "path": "../work/real-ctf/results/analysis/submission.csv",
+        "fields": [
+          "提交内容"
+        ],
+        "raw": true,
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "serialize:data"
+      }
+    },
+    {
+      "id": "digest",
+      "plugin": "codec.fields",
+      "config": {
+        "fields": [
+          "提交内容"
+        ],
+        "operation": "md5"
+      },
+      "inputs": {
+        "data": "serialize:data"
+      }
+    },
+    {
+      "id": "flag",
+      "plugin": "text.template",
+      "config": {
+        "template": "flag{{{提交内容}}}",
+        "output": "flag"
+      },
+      "inputs": {
+        "data": "digest:valid"
+      }
+    },
+    {
+      "id": "save_flag",
+      "plugin": "text.write",
+      "config": {
+        "path": "../work/real-ctf/results/analysis/flag.txt",
+        "fields": [
+          "flag"
+        ],
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "flag:data"
+      }
+    }
+  ]
+}

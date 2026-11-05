@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "name": "CSV 校验与条件分流",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "csv.read",
+      "config": {"path": "data/people.csv"}
+    },
+    {
+      "id": "check_phone",
+      "plugin": "validate.regex",
+      "inputs": {"data": "read:data"},
+      "config": {"field": "手机号", "pattern": "[0-9]{11}", "message": "示例规则：手机号必须是 11 位数字"}
+    },
+    {
+      "id": "filter",
+      "plugin": "rows.filter",
+      "inputs": {"data": "check_phone:valid"},
+      "config": {
+        "match": "all",
+        "conditions": [
+          {"field": "性别", "op": "eq", "value": "男"},
+          {"field": "姓名", "op": "length", "min": 2, "max": 4}
+        ]
+      }
+    },
+    {
+      "id": "save_matched",
+      "plugin": "csv.write",
+      "inputs": {"data": "filter:matched"},
+      "config": {"path": "../work/demo/matched.csv", "overwrite": true}
+    },
+    {
+      "id": "save_unmatched",
+      "plugin": "json.write",
+      "inputs": {"data": "filter:unmatched"},
+      "config": {"path": "../work/demo/unmatched.json", "diagnostics": true, "overwrite": true}
+    },
+    {
+      "id": "save_invalid",
+      "plugin": "csv.write",
+      "inputs": {"data": "check_phone:invalid"},
+      "config": {"path": "../work/demo/invalid.csv", "diagnostics": true, "overwrite": true}
+    }
+  ]
+}

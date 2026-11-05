@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "name": "演练：字段编码还原",
+  "description": "参考浙江2025初赛 dsEnData；已知密钥，虚构数据含一行损坏密文",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "csv.read",
+      "config": {
+        "path": "data/ctf_encoded.csv"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "decode",
+      "plugin": "codec.xor",
+      "config": {
+        "fields": [
+          "username",
+          "city"
+        ],
+        "key": "a1a60171273e74a6",
+        "key_offset": 1
+      },
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "write",
+      "plugin": "csv.write",
+      "config": {
+        "path": "../work/practice/xor_answer.csv",
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "decode:valid"
+      }
+    },
+    {
+      "id": "reject",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/practice/xor_reject.jsonl",
+        "overwrite": true,
+        "format": "jsonl"
+      },
+      "inputs": {
+        "data": "decode:invalid"
+      }
+    }
+  ]
+}

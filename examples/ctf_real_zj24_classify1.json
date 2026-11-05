@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "name": "真实题：浙江2024决赛：两万行数据分类",
+  "description": "20000行姓名、身份证与手机号分类，保持原行序；尚无官方正确率。",
+  "nodes": [
+    {
+      "id": "read",
+      "plugin": "csv.read",
+      "config": {
+        "path": "../work/contest-round2/input/zj24_classify1/data.csv"
+      },
+      "inputs": {}
+    },
+    {
+      "id": "source_order",
+      "plugin": "rows.number",
+      "config": {
+        "output": "原始序号"
+      },
+      "inputs": {
+        "data": "read:data"
+      }
+    },
+    {
+      "id": "classify",
+      "plugin": "rows.classify",
+      "config": {
+        "rules": [
+          {
+            "label": "姓名",
+            "conditions": [
+              {
+                "field": "数据值",
+                "op": "regex",
+                "value": "^[\\u4e00-\\u9fff]+$"
+              }
+            ]
+          },
+          {
+            "label": "身份证号",
+            "conditions": [
+              {
+                "field": "数据值",
+                "op": "regex",
+                "value": "^[0-9]{17}[0-9Xx]$"
+              }
+            ]
+          },
+          {
+            "label": "手机号",
+            "conditions": [
+              {
+                "field": "数据值",
+                "op": "regex",
+                "value": "^(?:734|735|736|737|738|739|747|748|750|751|752|757|758|759|772|778|782|783|784|787|788|795|798|730|731|732|740|745|746|755|756|766|767|771|775|776|785|786|796|733|749|753|773|774|777|780|781|789|790|791|793|799)[0-9]{8}$"
+              }
+            ]
+          }
+        ],
+        "default": "未识别",
+        "output": "类型"
+      },
+      "inputs": {
+        "data": "source_order:data"
+      }
+    },
+    {
+      "id": "identity_rows",
+      "plugin": "rows.filter",
+      "config": {
+        "conditions": [
+          {
+            "field": "类型",
+            "op": "eq",
+            "value": "身份证号"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "classify:data"
+      }
+    },
+    {
+      "id": "checksum",
+      "plugin": "validate.identity",
+      "config": {
+        "field": "数据值",
+        "check_date": false,
+        "check_sequence": false,
+        "check_region_format": false
+      },
+      "inputs": {
+        "data": "identity_rows:matched"
+      }
+    },
+    {
+      "id": "known",
+      "plugin": "rows.filter",
+      "config": {
+        "conditions": [
+          {
+            "field": "类型",
+            "op": "ne",
+            "value": "未识别"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "identity_rows:unmatched"
+      }
+    },
+    {
+      "id": "merge",
+      "plugin": "rows.merge",
+      "config": {},
+      "inputs": {
+        "left": "checksum:valid",
+        "right": "known:matched"
+      }
+    },
+    {
+      "id": "restore_order",
+      "plugin": "rows.sort",
+      "config": {
+        "rules": [
+          {
+            "field": "原始序号",
+            "type": "number",
+            "direction": "asc"
+          }
+        ]
+      },
+      "inputs": {
+        "data": "merge:data"
+      }
+    },
+    {
+      "id": "answer",
+      "plugin": "columns.select",
+      "config": {
+        "fields": [
+          "类型",
+          "数据值"
+        ]
+      },
+      "inputs": {
+        "data": "restore_order:data"
+      }
+    },
+    {
+      "id": "save",
+      "plugin": "csv.write",
+      "config": {
+        "path": "../work/contest-round2/results/zj24_classify1/submission.csv",
+        "overwrite": true
+      },
+      "inputs": {
+        "data": "answer:data"
+      }
+    },
+    {
+      "id": "reject_id",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/contest-round2/results/zj24_classify1/rejected_identity.jsonl",
+        "overwrite": true,
+        "format": "jsonl",
+        "diagnostics": true
+      },
+      "inputs": {
+        "data": "checksum:invalid"
+      }
+    },
+    {
+      "id": "reject_type",
+      "plugin": "json.write",
+      "config": {
+        "path": "../work/contest-round2/results/zj24_classify1/unclassified.jsonl",
+        "overwrite": true,
+        "format": "jsonl",
+        "diagnostics": true
+      },
+      "inputs": {
+        "data": "known:unmatched"
+      }
+    }
+  ]
+}
