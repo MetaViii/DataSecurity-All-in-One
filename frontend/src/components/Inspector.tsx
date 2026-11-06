@@ -12,6 +12,7 @@ type Props = {
   files: FileInfo[];
   onLabel: (value: string) => void;
   onConfig: (key: string, value: unknown) => void;
+  onPatch: (patch: Record<string, unknown>) => void;
   onConnect: (port: string, endpoint: string) => void;
   onDelete: () => void;
   onPreview: () => void;
@@ -26,6 +27,7 @@ export function Inspector({
   files,
   onLabel,
   onConfig,
+  onPatch,
   onConnect,
   onDelete,
   onPreview,
@@ -214,6 +216,9 @@ export function Inspector({
                 <ParameterField
                   key={id}
                   parameter={parameter}
+                  pluginId={plugin.id}
+                  config={config}
+                  onPatch={onPatch}
                   value={config[parameter.name]}
                   onChange={(value) => onConfig(parameter.name, value)}
                   fields={fields}
@@ -228,6 +233,9 @@ export function Inspector({
                 <ParameterField
                   key={parameter.name}
                   parameter={parameter}
+                  pluginId={plugin.id}
+                  config={config}
+                  onPatch={onPatch}
                   value={config[parameter.name]}
                   onChange={(value) => onConfig(parameter.name, value)}
                   fields={fields}

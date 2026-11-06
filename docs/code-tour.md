@@ -1,6 +1,6 @@
 # 从界面点击到文件导出：代码导读
 
-当前0.5共有56个节点，包含界面插件管理、五条小样本演练及多条完整原附件流程。第一次使用先读 [解题工作流](workbench-guide.md)，源码的对照说明见 [新增节点](advanced-nodes.md)、[插件管理](plugin-manager.md)、[原题实测](real-ctf.md)、[浙江/羊城杯实测](contest-round2.md)与[纠错和评分](correction.md)。
+当前0.7共有56个节点，包含界面插件管理、小样本演练、多条完整原附件流程、[独立Python脚本导出](python-export.md)和[正则助手](regex-assistant.md)。第一次使用先读 [解题工作流](workbench-guide.md)，源码的对照说明见 [新增节点](advanced-nodes.md)、[插件管理](plugin-manager.md)、[原题实测](real-ctf.md)、[浙江/羊城杯实测](contest-round2.md)与[纠错和评分](correction.md)。
 
 Web 界面的排版、工作区首页、中文显示层及状态管理调整补充在 ui-notes.md；核心执行流程沿用本文的约定。
 
@@ -11,7 +11,9 @@ Web 界面的排版、工作区首页、中文显示层及状态管理调整补�
 ```text
 datasecurity/
   __main__.py                 python -m datasecurity 入口
-  cli.py                      plugins / validate / run / serve
+  cli.py                      plugins / validate / run / serve / export-python
+  exporter.py                 校验流程、收集依赖源码、生成独立脚本
+  _export_runtime.py          附加到exp.py中的标准库运行入口
   core/
     models.py                 Origin / Issue / Change / Record / Table
     plugin.py                 Parameter / PluginSpec / Plugin / RunContext
@@ -45,13 +47,15 @@ datasecurity/
     workspace.py              附件、模板、项目、插件管理
     jobs.py                   异步任务、结果生命周期、分页
     plugin_manager.py         可信插件源码安装与启停
+    regex_assistant.py        正则模板、规则组合和受限测试进程
+    _regex_worker.py          标准库re单次测试，不参与正式数据处理
 frontend/
   src/
     main.tsx                  挂载 React，安装 ReactFlowProvider
     App.tsx                   流程/选中项/项目/任务的页面状态和操作
     types.ts                  前后端通信与画布类型
     model.js                  流程 JSON 与画布转换、环检查、布局
-    api.ts                    fetch、会话 token、上传、JSON 下载
+    api.ts                    fetch、会话 token、上传、JSON/源码下载
     components/
       Library.tsx             模块库、文件列表
       PluginNode.tsx          画布节点卡片与命名端口
@@ -59,12 +63,16 @@ frontend/
       Fields.tsx              通用参数与复杂规则编辑器
       Results.tsx             预览表格、分页、记录、导出
       Dialogs.tsx             项目、JSON、追踪和文档弹窗
+      PythonExport.tsx        独立脚本预览、附件清单与下载
+      RegexInput.tsx          正则输入旁入口，按需载入助手
+      RegexAssistant.tsx      模板、规则组合、样例测试与确认回填
     styles.css                本地工作台布局与响应式样式
   tests/model.test.mjs         不依赖浏览器的流程契约测试
 plugins/add_prefix.py          外部插件最小样例
 examples/                     基础模板、小样本演练、原题流程、外部插件样例
 scripts/real_ctf.py            获取固定版本公开附件、组合通用节点、核对公布答案
 scripts/contest_round2.py      浙江/羊城杯原附件下载、流程与证据记录
+scripts/verify_python_export.py 独立脚本与原题完整输出的逐字节核对
 tests/                        内核、节点、HTTP 集成测试
 work/                         运行数据，不作为源码提交
 ```

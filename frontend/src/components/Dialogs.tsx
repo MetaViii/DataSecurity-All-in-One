@@ -365,6 +365,8 @@ export function DocsDialog({ onClose }: { onClose: () => void }) {
             ['real-ctf', '完整原题实测'],
             ['contest-round2', '浙江与羊城杯原附件'],
             ['correction', '纠错与正确率'],
+            ['python-export', '导出独立 Python'],
+            ['regex-assistant', '正则助手'],
             ['nodes', '节点手册'],
             ['advanced-nodes', '新增节点'],
             ['plugins', '开发插件'],

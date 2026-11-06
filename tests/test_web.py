@@ -216,6 +216,27 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.post(f"/api/runs/{job_id}/cancel", {}).status_code, 200)
         self.assertEqual(self.wait(job_id)["status"], "cancelled")
 
+    def test_python_export_validates_without_running_or_reading_files(self):
+        definition = flow(
+            node("read", "csv.read", {"path": "not-present.csv"}),
+            node("save", "csv.write", {"path": "answer.csv"}, data="read:data"),
+        )
+        self.assertEqual(
+            self.client.post("/api/export/python", json={"definition": definition}).status_code, 403
+        )
+        response = self.post("/api/export/python", {"definition": definition})
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        compile(payload["script"], "exp.py", "exec")
+        self.assertEqual(payload["filename"], "exp.py")
+        self.assertEqual(payload["inputs"]["read.path"]["path"], "not-present.csv")
+        self.assertFalse((self.root / "answer.csv").exists())
+        self.assertEqual(self.post("/api/export/python", {"definition": flow()}).status_code, 422)
+        definition["plugin_dirs"] = ["../untrusted"]
+        self.assertEqual(
+            self.post("/api/export/python", {"definition": definition}).status_code, 422
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

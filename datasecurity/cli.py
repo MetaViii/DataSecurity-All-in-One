@@ -52,15 +52,23 @@ def _parser() -> argparse.ArgumentParser:
             "--plugin-dir", action="append", default=[], help="加载目录下的 .py 插件；可重复指定"
         )
         command.add_argument("--json", action="store_true", help="输出 JSON")
-    for name in ("validate", "run"):
+    for name in ("validate", "run", "export-python"):
         command = commands.add_parser(
-            name, help="检查流程配置" if name == "validate" else "执行流程"
+            name,
+            help={
+                "validate": "检查流程配置",
+                "run": "执行流程",
+                "export-python": "导出独立 exp.py",
+            }[name],
         )
         command.add_argument("flow", type=Path, help="JSON 流程文件")
         command.add_argument(
             "--plugin-dir", action="append", default=[], help="额外插件目录，路径相对于当前工作目录"
         )
         command.add_argument("--json", action="store_true", help="输出机器可读的执行摘要")
+        if name == "export-python":
+            command.add_argument("--output", type=Path, default=Path("exp.py"), help="脚本保存路径")
+            command.add_argument("--force", action="store_true", help="允许替换已存在的脚本")
         if name == "run":
             command.add_argument(
                 "--base-dir", type=Path, help="输入输出相对路径的基准目录；默认流程文件所在目录"
@@ -138,6 +146,27 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         pipeline = Pipeline(registry)
+        if args.command == "export-python":
+            from datasecurity.exporter import export_python
+            from datasecurity.builtin._files import atomic_text
+
+            target = args.output.resolve()
+            if target == flow_path:
+                raise ValueError("脚本不能覆盖输入流程文件")
+            if target.exists() and not args.force:
+                raise ValueError("脚本已存在，更换路径或使用 --force")
+            exported = export_python(definition, registry)
+            with atomic_text(target, encoding="utf-8", newline="\n") as handle:
+                handle.write(exported.script)
+            metadata = exported.describe()
+            metadata.pop("script")
+            metadata["path"] = str(target)
+            print(
+                json.dumps(metadata, ensure_ascii=False, indent=2)
+                if args.json
+                else f"已导出独立脚本：{target}"
+            )
+            return 0
         if args.command == "validate":
             steps = pipeline.plan(definition)
             payload = {"valid": True, "order": [step.id for step in steps]}

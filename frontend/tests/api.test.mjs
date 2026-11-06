@@ -6,11 +6,46 @@ import { stripTypeScriptTypes } from 'node:module';
 // Compile the same TS module used by the browser; no DOM runtime is needed.
 const source = await readFile(new URL('../src/api.ts', import.meta.url), 'utf8');
 const js = stripTypeScriptTypes(source, { mode: 'strip' });
-const { api, setToken } = await import(
+const { api, setToken, downloadText } = await import(
   `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
 );
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+test('Python download preserves source text, filename and media type', async () => {
+  const originalDocument = globalThis.document;
+  const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
+  let blob,
+    clicked = false,
+    revoked;
+  const anchor = {
+    click: () => {
+      clicked = true;
+    },
+  };
+  globalThis.document = { createElement: () => anchor };
+  URL.createObjectURL = (value) => {
+    blob = value;
+    return 'blob:python';
+  };
+  URL.revokeObjectURL = (value) => {
+    revoked = value;
+  };
+  try {
+    const script = '# 中文\npattern = r"1[0-9]{10}"\n';
+    downloadText(script, 'exp.py', 'text/x-python;charset=utf-8');
+    assert.equal(await blob.text(), script);
+    assert.equal(blob.type, 'text/x-python;charset=utf-8');
+    assert.equal(anchor.download, 'exp.py');
+    assert.equal(clicked, true);
+    assert.equal(revoked, 'blob:python');
+  } finally {
+    globalThis.document = originalDocument;
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+  }
+});
 
 test('a token rejection before execution refreshes the session and retries once', async () => {
   const original = globalThis.fetch,

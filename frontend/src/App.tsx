@@ -71,6 +71,7 @@ import { Results } from './components/Results';
 import { DocsDialog, FlowDialog, Modal, ProjectsDialog, RecordDialog } from './components/Dialogs';
 import { WorkspaceHome } from './components/WorkspaceHome';
 import { PluginManager } from './components/PluginManager';
+import { PythonExport } from './components/PythonExport';
 import { useConfirmation } from './hooks/useConfirmation';
 import { useServiceStatus } from './hooks/useServiceStatus';
 import { draftProblems } from './presentation.js';
@@ -260,20 +261,24 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
-  const setConfig = useCallback(
-    (key: string, value: unknown) => {
+  const patchConfig = useCallback(
+    (patch: Record<string, unknown>) => {
       if (!selected) return;
       remember();
       setDirty(true);
       setNodes((current) =>
         current.map((node) =>
           node.id === selected
-            ? { ...node, data: { ...node.data, config: { ...node.data.config, [key]: value } } }
+            ? { ...node, data: { ...node.data, config: { ...node.data.config, ...patch } } }
             : node,
         ),
       );
     },
     [selected, remember],
+  );
+  const setConfig = useCallback(
+    (key: string, value: unknown) => patchConfig({ [key]: value }),
+    [patchConfig],
   );
   const connect = useCallback(
     (connection: Connection) => {
@@ -895,6 +900,15 @@ export default function App() {
               <Code2 size={15} />
               <span>流程 JSON</span>
             </button>
+            <button
+              className="toolbar-link"
+              disabled={!connected || !nodes.length}
+              onClick={() => setDialog('python-export')}
+              title="导出含处理源码的独立复现脚本"
+            >
+              <ArrowDownToLine size={15} />
+              <span>导出 Python</span>
+            </button>
             <span className="header-spacer" />
             <button
               className="button subtle"
@@ -1200,6 +1214,7 @@ export default function App() {
                   setDirty(true);
                 }}
                 onConfig={setConfig}
+                onPatch={patchConfig}
                 onConnect={(port, endpoint) => {
                   if (!endpoint) {
                     remember();
@@ -1284,6 +1299,9 @@ export default function App() {
         />
       )}
       {dialog === 'docs' && <DocsDialog onClose={() => setDialog(null)} />}
+      {dialog === 'python-export' && (
+        <PythonExport definition={definition} onClose={() => setDialog(null)} />
+      )}
       {dialog === 'plugins' && (
         <PluginManager
           busy={busy}

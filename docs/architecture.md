@@ -1,6 +1,6 @@
 # 架构与边界
 
-当前0.5有56个内置节点和本地插件管理。节点口径见 [新增节点说明](advanced-nodes.md)、[原题实测](real-ctf.md)、[第二批实测](contest-round2.md)和[纠错评分](correction.md)；插件安装、启停的注册表切换和运行锁见 [插件管理](plugin-manager.md)。核心仍采用下述三层模型。
+当前0.7有56个内置节点和本地插件管理，支持[独立Python脚本导出](python-export.md)和[正则助手](regex-assistant.md)。节点口径见 [新增节点说明](advanced-nodes.md)、[原题实测](real-ctf.md)、[第二批实测](contest-round2.md)和[纠错评分](correction.md)；插件安装、启停的注册表切换和运行锁见 [插件管理](plugin-manager.md)。核心仍采用下述三层模型。
 
 ## 三层及依赖方向
 

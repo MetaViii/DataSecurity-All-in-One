@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 import sys
+import tokenize
 from pathlib import Path
 
 from .errors import ValidationError
@@ -16,6 +18,7 @@ class Registry:
         self._loaded_paths: set[Path] = set()
         self.file_plugins: dict[Path, tuple[str, ...]] = {}
         self.file_errors: dict[Path, str] = {}
+        self.file_sources: dict[Path, str] = {}
 
     def register(self, plugin: Plugin) -> None:
         if not isinstance(plugin, Plugin) or not isinstance(
@@ -42,6 +45,7 @@ class Registry:
         result._loaded_paths = set(self._loaded_paths)
         result.file_plugins = dict(self.file_plugins)
         result.file_errors = dict(self.file_errors)
+        result.file_sources = dict(self.file_sources)
         result.load_errors = list(self.load_errors)
         return result
 
@@ -51,6 +55,7 @@ class Registry:
             self._plugins.pop(plugin_id, None)
         self._loaded_paths.discard(path)
         self.file_errors.pop(path, None)
+        self.file_sources.pop(path, None)
         self.load_errors = list(self.file_errors.values())
 
     def load_file(self, path: Path, source: str | None = None) -> tuple[str, ...]:
@@ -69,7 +74,8 @@ class Registry:
                 raise ImportError("无法创建模块加载器")
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module
-            code = compile(source if source is not None else path.read_bytes(), str(path), "exec")
+            content = source if source is not None else path.read_bytes()
+            code = compile(content, str(path), "exec")
             exec(code, module.__dict__)
             if (
                 not isinstance(getattr(module, "PLUGINS", None), (list, tuple))
@@ -86,6 +92,10 @@ class Registry:
                 self.register(plugin)
             ids = tuple(plugin.spec.id for plugin in instances)
             self.file_plugins[path] = ids
+            if isinstance(content, bytes):
+                encoding, _ = tokenize.detect_encoding(io.BytesIO(content).readline)
+                content = content.decode(encoding)
+            self.file_sources[path] = content
             self._loaded_paths.add(path)
             return ids
         except BaseException:

@@ -61,9 +61,11 @@ export async function upload(file: File) {
 }
 
 export function downloadJSON(value: unknown, filename: string) {
-  const url = URL.createObjectURL(
-    new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }),
-  );
+  downloadText(JSON.stringify(value, null, 2), filename, 'application/json');
+}
+
+export function downloadText(value: string, filename: string, type = 'text/plain;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([value], { type }));
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;

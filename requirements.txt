@@ -1,0 +1,4 @@
+# Run from the project root: python -m pip install -r requirements.txt
+# Includes Web, XLSX and crypto; versions are defined in pyproject.toml.
+# Install Node.js/npm and Wireshark/TShark separately.
+-e .[web,crypto]

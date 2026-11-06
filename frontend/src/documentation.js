@@ -6,6 +6,8 @@ const bundled = {
   'real-ctf.md': 'real-ctf',
   'contest-round2.md': 'contest-round2',
   'correction.md': 'correction',
+  'python-export.md': 'python-export',
+  'regex-assistant.md': 'regex-assistant',
   'node-catalog.md': 'nodes',
   'advanced-nodes.md': 'advanced-nodes',
   'architecture.md': 'architecture',

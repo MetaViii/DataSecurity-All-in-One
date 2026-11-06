@@ -22,10 +22,12 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from datasecurity import __version__
 from datasecurity.core.pipeline import Pipeline
+from datasecurity.exporter import export_python
 
 from .jobs import JobManager
 from .workspace import SUPPORTED, Workspace
 from .plugin_manager import PluginManager
+from .regex_assistant import TEMPLATES, RegexBusyError, compose, test_pattern
 
 
 def create_app(root: Path | str | None = None, *, frontend_dir: Path | None = None) -> FastAPI:
@@ -109,6 +111,21 @@ def create_app(root: Path | str | None = None, *, frontend_dir: Path | None = No
     @app.get("/api/health")
     def health():
         return {"ok": True, "version": __version__}
+
+    @app.get("/api/regex/templates")
+    def regex_templates():
+        return {"templates": TEMPLATES}
+
+    @app.post("/api/regex/build")
+    def regex_build(payload: dict = Body(...)):
+        return compose(payload)
+
+    @app.post("/api/regex/test")
+    def regex_test(payload: dict = Body(...)):
+        try:
+            return test_pattern(payload)
+        except RegexBusyError as exc:
+            raise HTTPException(429, str(exc)) from exc
 
     @app.post("/api/plugins/reload")
     def reload_plugins():
@@ -198,6 +215,15 @@ def create_app(root: Path | str | None = None, *, frontend_dir: Path | None = No
             raise ValueError("preview 必须是布尔值，target 必须是节点 ID")
         return jobs.start(payload.get("definition"), preview=preview, target=target)
 
+    @app.post("/api/export/python")
+    def export_python_script(payload: dict = Body(...)):
+        definition = payload.get("definition")
+        if not isinstance(definition, dict):
+            raise ValueError("definition 必须是对象")
+        if definition.get("plugin_dirs"):
+            raise ValueError("Web 导出仅使用已加载的插件，请移除 plugin_dirs")
+        return export_python(definition, workspace.registry).describe()
+
     @app.get("/api/runs/{job_id}")
     def job_status(job_id: str):
         return jobs.snapshot(job_id)
@@ -275,6 +301,8 @@ def create_app(root: Path | str | None = None, *, frontend_dir: Path | None = No
             "real-ctf": "real-ctf.md",
             "contest-round2": "contest-round2.md",
             "correction": "correction.md",
+            "python-export": "python-export.md",
+            "regex-assistant": "regex-assistant.md",
         }
         if name not in documents:
             raise HTTPException(404)

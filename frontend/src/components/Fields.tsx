@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Code2, Plus, X } from 'lucide-react';
 import type { Parameter } from '../types';
 import { choiceLabel, parameterLabel } from '../presentation.js';
+import { RegexInput } from './RegexInput';
+import { regexBinding, regexPatch } from '../regex-assistant.js';
 
 type Rule = Record<string, unknown>;
 type EditorProps = { value: unknown; onChange: (value: unknown) => void; fields: string[] };
@@ -161,13 +163,16 @@ function ExtractionEditor({ value, onChange }: EditorProps) {
               <X size={13} />
             </button>
           </div>
-          <textarea
-            aria-label={`规则${index + 1}正则表达式`}
-            rows={2}
+          <RegexInput
+            multiline
+            scope={{ mode: 'find_all', group: Number(rule.group ?? 0) }}
+            label={`规则${index + 1}正则表达式`}
             placeholder="正则表达式，注意数字边界"
             value={string(rule.pattern)}
-            spellCheck={false}
-            onChange={(event) => update(index, { pattern: event.target.value })}
+            onChange={(pattern) => update(index, { pattern })}
+            onApply={(selection) =>
+              update(index, { pattern: selection.pattern, group: selection.group })
+            }
           />
           <label>
             捕获组{' '}
@@ -271,14 +276,23 @@ function ConditionsEditor({ value, onChange, fields }: EditorProps) {
               />
             </div>
           ) : (
-            !['empty', 'not_empty'].includes(string(rule.op)) && (
+            !['empty', 'not_empty'].includes(string(rule.op)) &&
+            (rule.op === 'regex' ? (
+              <RegexInput
+                label={`条件 ${index + 1} 比较值`}
+                scope={{ mode: 'search' }}
+                placeholder="Python 正则表达式"
+                value={string(rule.value)}
+                onChange={(value) => update(index, { value })}
+              />
+            ) : (
               <input
                 aria-label={`条件 ${index + 1} 比较值`}
-                placeholder={rule.op === 'regex' ? 'Python 正则表达式' : '比较值（字符串）'}
+                placeholder="比较值（字符串）"
                 value={string(rule.value)}
                 onChange={(event) => update(index, { value: event.target.value })}
               />
-            )
+            ))
           )}
         </div>
       ))}
@@ -361,11 +375,12 @@ function ValidationEditor({ value, onChange, fields }: EditorProps) {
             </select>
           </div>
           {rule.check === 'regex' && (
-            <input
-              aria-label="校验正则"
+            <RegexInput
+              label={`规则 ${index + 1} 校验正则`}
+              scope={{ mode: 'fullmatch' }}
               placeholder="完整匹配的正则表达式"
               value={string(rule.pattern)}
-              onChange={(event) => update(index, { pattern: event.target.value })}
+              onChange={(pattern) => update(index, { pattern })}
             />
           )}
           {['length', 'range'].includes(string(rule.check)) && (
@@ -672,12 +687,18 @@ export function ParameterField({
   onChange,
   fields,
   id,
+  pluginId = '',
+  config = {},
+  onPatch,
 }: {
   parameter: Parameter;
   value: unknown;
   onChange: (value: unknown) => void;
   fields: string[];
   id: string;
+  pluginId?: string;
+  config?: Record<string, unknown>;
+  onPatch?: (patch: Record<string, unknown>) => void;
 }) {
   if (value === undefined) value = parameter.default;
   const [jsonMode, setJsonMode] = useState(false);
@@ -695,7 +716,19 @@ export function ParameterField({
   };
   const Editor = editors[parameter.widget || ''];
   let control;
-  if (compound)
+  const binding = regexBinding(pluginId, parameter.name, config);
+  if (binding && onPatch)
+    control = (
+      <RegexInput
+        id={id}
+        label={parameterLabel(parameter.name)}
+        value={string(value)}
+        onChange={onChange}
+        scope={binding}
+        onApply={(selection) => onPatch(regexPatch(pluginId, parameter.name, selection))}
+      />
+    );
+  else if (compound)
     control =
       !jsonMode && Editor && typeof value !== 'string' ? (
         <Editor value={value} onChange={onChange} fields={fields} />
