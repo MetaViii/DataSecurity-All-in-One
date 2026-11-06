@@ -26,12 +26,12 @@ class PythonExportTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.registry = create_registry()
 
-    def execute(self, exported, *args, site=False):
+    def execute(self, exported, *args, site=False, cwd=None):
         script = self.root / "exp.py"
         script.write_text(exported.script, encoding="utf-8")
         return subprocess.run(
             [sys.executable, "-I", *([] if site else ["-S"]), str(script), *map(str, args)],
-            cwd=self.root,
+            cwd=cwd or self.root,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -80,6 +80,120 @@ class PythonExportTests(unittest.TestCase):
                 (self.root / "expected" / name).read_bytes(),
                 (self.root / "output" / name).read_bytes(),
             )
+        self.assertEqual(exported.run_command, "python exp.py data.csv --output-dir output")
+        ambiguous = self.execute(exported, "input.csv", "answer.csv")
+        self.assertEqual(ambiguous.returncode, 2)
+        self.assertIn("恰好一个文件输出", ambiguous.stderr)
+        self.assertFalse((self.root / "answer.csv").exists())
+        direct = self.execute(exported, "input.csv", "--output-dir", self.root / "all-outputs")
+        self.assertEqual(direct.returncode, 0, direct.stderr)
+        for name in ("good.csv", "bad.csv"):
+            self.assertEqual(
+                (self.root / "expected" / name).read_bytes(),
+                (self.root / "all-outputs" / name).read_bytes(),
+            )
+
+    def test_positional_csv_uses_terminal_directory_without_installed_packages(self):
+        terminal = self.root / "终端 空格"
+        terminal.mkdir()
+        source = terminal / "输入 数据.csv"
+        source.write_text(
+            '编号,手机号,备注\n0001,13812345678,"中文,逗号"\n0002,23812345678,错误\n',
+            encoding="utf-8",
+            newline="",
+        )
+        definition = flow(
+            node("read", "csv.read", {"path": "old-workspace/missing.csv"}),
+            node(
+                "phone",
+                "validate.regex",
+                {"field": "手机号", "pattern": "1[0-9]{10}"},
+                data="read:data",
+            ),
+            node("save", "csv.write", {"path": "old-workspace/answer.csv"}, data="phone:valid"),
+        )
+        exported = export_python(definition, self.registry)
+        self.assertEqual(exported.run_command, "python exp.py data.csv output.csv")
+        self.assertEqual(exported.describe()["run_command"], exported.run_command)
+        self.assertEqual(exported.requirements, [])
+        self.assertEqual(exported.commands, [])
+        # The baseline and exported script use the same nodes, but the script
+        # lives outside the terminal directory and has no site-packages.
+        definition["nodes"][0]["config"]["path"] = source.name
+        definition["nodes"][-1]["config"]["path"] = "expected.csv"
+        Pipeline(self.registry).run(definition, base_dir=terminal)
+        result = self.execute(exported, source.name, "结果 数据.csv", "--json", cwd=terminal)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        target = terminal / "结果 数据.csv"
+        self.assertEqual(target.read_bytes(), (terminal / "expected.csv").read_bytes())
+        self.assertEqual(json.loads(result.stdout)["written_files"], [str(target)])
+        self.assertIn("0001", target.read_text(encoding="utf-8"))
+        self.assertFalse((self.root / "output").exists())
+        self.assertFalse((self.root / "old-workspace").exists())
+
+    def test_positional_preview_overwrite_and_path_protection(self):
+        source = self.root / "data.csv"
+        source.write_text("编号\n0001\n", encoding="utf-8", newline="")
+        exported = export_python(
+            flow(
+                node("read", "csv.read", {"path": "missing.csv"}),
+                node("save", "csv.write", {"path": "answer.csv"}, data="read:data"),
+            ),
+            self.registry,
+        )
+        preview = self.execute(exported, "data.csv", "output.csv", "--preview", "--json")
+        self.assertEqual(preview.returncode, 0, preview.stderr)
+        self.assertEqual(json.loads(preview.stdout)["written_files"], [])
+        target = self.root / "output.csv"
+        self.assertFalse(target.exists())
+        self.assertEqual(self.execute(exported, "data.csv", "output.csv").returncode, 0)
+        target.write_text("保留旧结果", encoding="utf-8")
+        again = self.execute(exported, "data.csv", "output.csv")
+        self.assertEqual(again.returncode, 2)
+        self.assertIn("已存在", again.stderr)
+        self.assertEqual(target.read_text(encoding="utf-8"), "保留旧结果")
+        overwritten = self.execute(exported, "data.csv", "output.csv", "--overwrite")
+        self.assertEqual(overwritten.returncode, 0, overwritten.stderr)
+        self.assertEqual(target.read_bytes(), source.read_bytes())
+        original = source.read_bytes()
+        protected = self.execute(exported, "data.csv", "data.csv", "--overwrite")
+        self.assertEqual(protected.returncode, 2)
+        self.assertIn("不能覆盖输入", protected.stderr)
+        self.assertEqual(source.read_bytes(), original)
+        own_script = self.execute(exported, "data.csv", "exp.py", "--overwrite")
+        self.assertEqual(own_script.returncode, 2)
+        self.assertIn("脚本本身", own_script.stderr)
+        self.assertEqual((self.root / "exp.py").read_text(encoding="utf-8"), exported.script)
+
+    def test_positional_conflicts_and_ambiguous_inputs_are_rejected(self):
+        exported = export_python(
+            flow(
+                node("read", "csv.read", {"path": "missing.csv"}),
+                node("save", "csv.write", {"path": "answer.csv"}, data="read:data"),
+            ),
+            self.registry,
+        )
+        for args, message in (
+            (("data.csv", "--input", "read.path=another.csv"), "重复的输入覆盖"),
+            (("data.csv", "output.csv", "--output-dir", "result"), "不能同时指定"),
+        ):
+            with self.subTest(args=args):
+                result = self.execute(exported, *args)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(message, result.stderr)
+        multiple = export_python(
+            flow(
+                node("first", "csv.read", {"path": "missing.csv"}),
+                node("second", "csv.read", {"path": "also-missing.csv"}),
+                node("save", "csv.write", {"path": "answer.csv"}, data="first:data"),
+            ),
+            self.registry,
+        )
+        self.assertIn("--base-dir", multiple.run_command)
+        result = self.execute(multiple, "data.csv", "output.csv")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--input 节点.参数=路径", result.stderr)
+        self.assertFalse((self.root / "output").exists())
 
     def test_input_override_preview_and_overwrite(self):
         source = self.root / "替换附件.csv"

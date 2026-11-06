@@ -229,6 +229,7 @@ class WebTests(unittest.TestCase):
         payload = response.json()
         compile(payload["script"], "exp.py", "exec")
         self.assertEqual(payload["filename"], "exp.py")
+        self.assertEqual(payload["run_command"], "python exp.py data.csv output.csv")
         self.assertEqual(payload["inputs"]["read.path"]["path"], "not-present.csv")
         self.assertFalse((self.root / "answer.csv").exists())
         self.assertEqual(self.post("/api/export/python", {"definition": flow()}).status_code, 422)

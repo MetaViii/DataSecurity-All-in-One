@@ -44,16 +44,25 @@ def _load_runtime():
     return modules
 
 
-def _configuration(input_overrides, output_dir, overwrite, modules):
+def _configuration(input_overrides, output_dir, output_file, overwrite, modules):
     configs = copy.deepcopy(CONFIG)
     for key, value in input_overrides.items():
         if key not in INPUT_FILES:
             raise ValueError(f"未知输入参数 {key}，可用项：{', '.join(INPUT_FILES)}")
         node, parameter = INPUT_FILES[key]["node"], INPUT_FILES[key]["parameter"]
         configs[node][parameter] = value
+    if output_file is not None and len(OUTPUT_FILES) != 1:
+        raise ValueError("指定结果文件要求恰好一个文件输出；多个输出请使用 --output-dir")
     output_dir = Path(output_dir).resolve()
     for node, filename in OUTPUT_FILES.items():
-        configs[node]["path"] = str(output_dir / filename)
+        path = (
+            Path(output_file).expanduser().resolve()
+            if output_file is not None
+            else output_dir / filename
+        )
+        if path == Path(__file__).resolve():
+            raise ValueError("输出不能覆盖 exp.py 脚本本身")
+        configs[node]["path"] = str(path)
         if "overwrite" in configs[node]:
             configs[node]["overwrite"] = overwrite
     # Validate every config before reading data or invoking any output plugin.
@@ -107,6 +116,12 @@ def main(argv=None):
             stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=FLOW_NAME + "：独立复现脚本")
     parser.add_argument(
+        "input_file", nargs="?", type=Path, help="替换唯一输入文件；相对路径以当前终端目录为准"
+    )
+    parser.add_argument(
+        "output_file", nargs="?", type=Path, help="指定唯一结果文件；相对路径以当前终端目录为准"
+    )
+    parser.add_argument(
         "--base-dir",
         type=Path,
         default=Path(__file__).resolve().parent,
@@ -115,7 +130,7 @@ def main(argv=None):
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path(__file__).resolve().parent / "output",
+        default=None,
         help="结果目录，默认脚本旁的 output；显式相对路径以终端目录为基准",
     )
     parser.add_argument(
@@ -129,7 +144,18 @@ def main(argv=None):
     parser.add_argument("--overwrite", action="store_true", help="允许替换已存在的输出文件")
     parser.add_argument("--json", action="store_true", help="输出 JSON 运行摘要")
     args = parser.parse_args(argv)
+    if args.input_file is not None and (
+        len(INPUT_FILES) != 1 or next(iter(INPUT_FILES.values()))["template"]
+    ):
+        parser.error("简写要求恰好一个普通输入文件；多个输入或路径模板请用 --input 节点.参数=路径")
+    if args.output_file is not None:
+        if len(OUTPUT_FILES) != 1:
+            parser.error("指定结果文件要求恰好一个文件输出；多个输出请使用 --output-dir 目录")
+        if args.output_dir is not None:
+            parser.error("结果文件与 --output-dir 不能同时指定，请选择一种输出方式")
     overrides = {}
+    if args.input_file is not None:
+        overrides[next(iter(INPUT_FILES))] = str(args.input_file.expanduser().resolve())
     for item in args.input:
         key, separator, value = item.partition("=")
         if not separator or not value:
@@ -141,6 +167,7 @@ def main(argv=None):
         result = solve(
             base_dir=args.base_dir,
             output_dir=args.output_dir,
+            output_file=args.output_file,
             input_overrides=overrides,
             preview=args.preview,
             overwrite=args.overwrite,

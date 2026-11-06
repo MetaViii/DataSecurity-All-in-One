@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datasecurity-all-in-one"
-version = "0.7.0"
+version = "0.7.1"
 description = "面向 CTF 数据处理的本地 Python 插件框架"
 readme = "README.md"
 requires-python = ">=3.11"

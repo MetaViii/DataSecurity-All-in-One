@@ -123,6 +123,7 @@ class PythonExport:
     requirements: list[str]
     commands: list[str]
     warnings: list[str]
+    run_command: str
 
     def describe(self):
         return {
@@ -135,6 +136,7 @@ class PythonExport:
             "requirements": self.requirements,
             "commands": self.commands,
             "warnings": self.warnings,
+            "run_command": self.run_command,
             "version": __version__,
             "bytes": len(self.script.encode("utf-8")),
             "sha256": hashlib.sha256(self.script.encode("utf-8")).hexdigest(),
@@ -228,6 +230,30 @@ def export_python(definition: dict, registry: Registry) -> PythonExport:
     if not isinstance(flow_name, str):
         raise ValueError("流程名称必须是字符串")
     json.dumps(configs, ensure_ascii=False, allow_nan=False)
+    run_command = 'python exp.py --base-dir "附件根目录" --output-dir output'
+    if len(inputs) == 1 and not next(iter(inputs.values()))["template"]:
+        input_node = next(iter(inputs.values()))["node"]
+        input_plugin = next(step.plugin.spec.id for step in plan if step.id == input_node)
+        input_name = {
+            "csv.read": "data.csv",
+            "xlsx.read": "data.xlsx",
+            "json.read": "data.json",
+            "text.records": "data.log",
+            "pcap.http": "data.pcap",
+        }.get(input_plugin, "input_file")
+        run_command = f"python exp.py {input_name}"
+        if len(outputs) == 1:
+            output_node = next(iter(outputs))
+            output_plugin = next(step.plugin.spec.id for step in plan if step.id == output_node)
+            output_name = {
+                "csv.write": "output.csv",
+                "xlsx.write": "output.xlsx",
+                "json.write": "output.json",
+                "text.write": "output.txt",
+            }.get(output_plugin, "output_file")
+            run_command += f" {output_name}"
+        elif outputs:
+            run_command += " --output-dir output"
     lines = [
         "#!/usr/bin/env python3",
         "# -*- coding: utf-8 -*-",
@@ -235,9 +261,10 @@ def export_python(definition: dict, registry: Registry) -> PythonExport:
         "",
         f"# {_comment(flow_name)} — DataSecurity {__version__} 独立复现脚本",
         "# Python 3.11+；不需要安装 DataSecurity、FastAPI 或前端。",
-        "# 用法：python exp.py --base-dir 附件根目录 --output-dir output",
-        "# 附件/公钥等资源不内嵌；默认以脚本目录解析相对输入路径。",
-        "# 输出统一放入 output，默认不覆盖；--preview 跳过输出节点。",
+        "# 用法：" + run_command,
+        "# 简写中的输入/输出文件以当前终端目录为准；附件/公钥等资源不内嵌。",
+        "# 不传参数时沿用流程输入，以脚本目录为基准；结果默认写入脚本旁的 output。",
+        "# 默认不覆盖旧文件；--overwrite 允许覆盖，--preview 跳过输出节点。",
     ]
     if requirements:
         lines.append(
@@ -262,11 +289,11 @@ def export_python(definition: dict, registry: Registry) -> PythonExport:
             "PLUGIN_VERSIONS = " + pformat(versions, width=100, sort_dicts=False),
             "",
             "",
-            "def solve(*, base_dir=None, output_dir=None, input_overrides=None, preview=False, overwrite=False):",
+            "def solve(*, base_dir=None, output_dir=None, output_file=None, input_overrides=None, preview=False, overwrite=False):",
             "    modules = _load_runtime()",
             "    base_dir = Path(base_dir or Path(__file__).resolve().parent).resolve()",
             "    output_dir = output_dir or Path(__file__).resolve().parent / 'output'",
-            "    config = _configuration(input_overrides or {}, output_dir, overwrite, modules)",
+            "    config = _configuration(input_overrides or {}, output_dir, output_file, overwrite, modules)",
             "    context = modules['datasecurity'].RunContext(base_dir, preview=preview)",
             "    tables, steps = {}, []",
         ]
@@ -313,5 +340,13 @@ def export_python(definition: dict, registry: Registry) -> PythonExport:
     script = "\n".join(lines)
     compile(script, "exp.py", "exec")
     return PythonExport(
-        script, len(plan), len(sources.sources), inputs, outputs, requirements, commands, warnings
+        script,
+        len(plan),
+        len(sources.sources),
+        inputs,
+        outputs,
+        requirements,
+        commands,
+        warnings,
+        run_command,
     )

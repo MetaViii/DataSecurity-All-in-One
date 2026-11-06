@@ -15,6 +15,7 @@ type Exported = {
   outputs: Record<string, string>;
   warnings: string[];
   bytes: number;
+  run_command: string;
 };
 
 export function PythonExport({
@@ -43,7 +44,7 @@ export function PythonExport({
       current = false;
     };
   }, [definition]);
-  const command = 'python exp.py --base-dir "附件根目录" --output-dir output';
+  const command = result?.run_command || '';
   return (
     <Modal title="导出独立 Python 脚本" onClose={onClose} wide>
       <div className="python-export">
@@ -87,8 +88,8 @@ export function PythonExport({
               {copied && <small role="status">已复制</small>}
             </div>
             <p className="export-hint">
-              相对输入路径默认以脚本目录为准；也可用 --input 节点.参数=路径
-              单独指定。结果统一放到输出目录，默认不覆盖。
+              单输入、单输出可用“输入文件 结果文件”简写，路径以当前终端目录为准。多输入使用 --input
+              节点.参数=路径，多输出使用 --output-dir 目录。默认不覆盖已有文件。
             </p>
             <details className="export-files" open>
               <summary>附件与依赖</summary>

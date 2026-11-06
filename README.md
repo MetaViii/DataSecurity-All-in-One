@@ -4,7 +4,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![React](https://img.shields.io/badge/React-19-61DAFB)
-![Version](https://img.shields.io/badge/Version-0.7.0-green)
+![Version](https://img.shields.io/badge/Version-0.7.1-green)
 
 通过可视化节点处理 CTF 数据安全题：导入附件、清洗校验、纠错分析，再导出答案或独立 Python 复现脚本。提供 **56 个内置节点**，支持自己添加 Python 插件。数据在本机处理，无需云端账号。
 
@@ -19,7 +19,7 @@
 - **正则助手**：常用模板、中文规则组合、Python 正反例测试，确认后回填节点；无需 grex。
 - **纠错与分析**：字典候选、人工修订、关联统计、按行/按格评分，保留来源与修改记录。
 - **流程与插件**：流程保存/导入、分支预览、插件模板、源码导入及热加载。
-- **WP 复现**：将完整流程导出为独立 `exp.py`，内嵌所需处理源码，无需安装本工具。
+- **WP 复现**：导出独立 `exp.py`；单输入、单输出可直接运行 `python exp.py data.csv output.csv`，无需安装本工具。
 
 ## 安装与启动
 
